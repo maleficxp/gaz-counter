@@ -1,3 +1,7 @@
 /output
 /photos
 /uwsgi
+.project
+.pydevproject
+.settings/
+
