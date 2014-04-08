@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}Показания счетчика{% endblock %}
+{% block head %}
+  {{ super() }}
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<script src="http://code.highcharts.com/modules/exporting.js"></script>
+<script src="{{ url_for('static', filename='chart.js') }}"></script>  
+{% endblock %}
+{% block content %}
+  <h2>Показания счетчика</h2>
+  <form method="POST">
+    С <input name="from_date" value="{{from_date.strftime('%d.%m.%Y')}}" size="10" class="datepicker"> 
+    по <input name="to_date" value="{{to_date.strftime('%d.%m.%Y')}}" size="10" class="datepicker">
+    <input name="process" value="Показать" type="submit">    
+  </form>
+  
+  Нераспознанных показаний: <a href="{{ url_for('recognize') }}">{{unrecognized_images_cnt}}</a>
+  
+  <div id="container" style="height: 800px; min-width: 500px"></div>
+  
+  <script>
+  var series = [];
+  var average_consumption = {{average_consumption}};
+  {% for point in series %}
+    time = new Date("{{point.time.isoformat()}}");
+    series.push({x:time.getTime(), y:{{point.diff}}, value:{{point.value}}});
+  {% endfor %}
+  </script>
+  
+{% endblock %}

@@ -1,0 +1,12 @@
+.digit-cell {
+  background-color:black;
+  color:white;
+}
+
+input.digit-result {
+  width: 12px;
+}
+
+.unrecognized {
+  background-color:red;
+}

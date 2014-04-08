@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}Распознавание цифр{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+{% block content %}
+  <h2>Распознавание цифр</h2>
+  <form action="/save_digits" method="POST">
+    <table>
+    {% for image in images %}
+      {% if image.digits|length>0 %}
+        <tr class="image-row">
+        <td>{{image.file_name}}</td>
+        {% for digit in image.digits %}      
+          <td class="digit-cell {% if digit.result=='?' %}unrecognized{% endif %}">
+            <img src='data:image/png;base64,{{ digit.getEncodedBody() }}'><br>
+            <input name="result[{{digit.id}}]" value="{{digit.result}}" class="digit-result"><br>
+            <input name="use_for_training[{{digit.id}}]" value="1" {% if digit.use_for_training %}checked="checked"{% endif %} type="checkbox"><br>
+          </td>
+        {% endfor %}
+        <td><a target="_blank" href="{{image.img_link}}">посмотреть картинку</a></td>
+        <td><input name="save" value="Сохранить" type="submit"></td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+    </table>
+  </form>
+{% endblock %}
