@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 import os
 import logging
+import sys
 
 dbengine = create_engine('sqlite:///' + os.path.dirname(__file__) + '/../db/images.db', echo=False)
 
@@ -26,7 +27,7 @@ mylogger.setLevel(logging.DEBUG)
 fh = logging.FileHandler(os.path.dirname(__file__)+'/gaz.log')
 fh.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
@@ -87,12 +88,18 @@ class Image(Base):
         x_center = max_loc[0] + sample_w/2
         y_center = max_loc[1] + sample_h/2
         
+        # some approx centering 
+        if x_center>w*0.6:
+            img = img[0:h, 0.2*w:w]
+            h, w, k = img.shape
+            x_center = x_center-0.2*w
+        
         # make grayscale image
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         # search for edges using Canny
         edges = cv2.Canny(gray, 100, 200)
         # detect lines
-        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=120)
+        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=100)
         
         # detect nearest for center horisontal lines
         rho_below = rho_above = np.sqrt(h*h+w*w)
@@ -104,7 +111,7 @@ class Image(Base):
             cos = np.cos(theta)
             
             # discard not horisontal
-            if (sin<0.9):
+            if (sin<0.7):
                 continue
     
             # calculate rho for line parallel to current line and passes through the "center" point             
@@ -114,19 +121,43 @@ class Image(Base):
             if rho_center>rho and rho_center-rho<rho_above:
                 rho_above = rho_center-rho
                 line_above = {"rho":rho, "theta":theta, "sin":sin, "cos":cos}
+                
+#                 x0 = cos*rho
+#                 y0 = sin*rho
+#                 x1 = int(x0 + 1000*(-sin))
+#                 y1 = int(y0 + 1000*(cos))
+#                 x2 = int(x0 - 1000*(-sin))
+#                 y2 = int(y0 - 1000*(cos))    
+#                 cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
             
             # compare line with nearest line below
             if rho_center<rho and rho-rho_center<rho_below:
                 rho_below = rho-rho_center
                 line_below = {"rho":rho, "theta":theta, "sin":sin, "cos":cos}
+                
+#                 x0 = cos*rho
+#                 y0 = sin*rho
+#                 x1 = int(x0 + 1000*(-sin))
+#                 y1 = int(y0 + 1000*(cos))
+#                 x2 = int(x0 - 1000*(-sin))
+#                 y2 = int(y0 - 1000*(cos))    
+#                 cv2.line(img,(x1,y1),(x2,y2),(0,255,0),2)
          
         # check result 
         if line_below==None or line_above==None:
             mylogger.warn("No lines found")
+#             cv2.imshow('img',img)
+#             key = cv2.waitKey(0)
+#             if key==1048603:
+#                 sys.exit()            
             return False 
         # check center must be approximetly in the middle between two lines 
-        if rho_below/rho_above>1.7 or rho_below/rho_above<0.7:
-            mylogger.warn("Wrong lines found")
+        if rho_below/rho_above>1.7 or rho_below/rho_above<0.6:
+            mylogger.warn("Wrong lines found: %f" % (rho_below/rho_above))
+#             cv2.imshow('img',img)
+#             key = cv2.waitKey(0)
+#             if key==1048603:
+#                 sys.exit()    
             return False
          
         # make lines horizontal
@@ -197,22 +228,29 @@ class Image(Base):
             # find contours
             other, contours, hierarhy = cv2.findContours(digit_bin.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
             
+            #mylogger.debug("Crop digit %d" % i)
+            
             # analyze contours
             biggest_contour = None
             biggest_contour_area = 0
             for cnt in contours:
                 M = cv2.moments(cnt)
                 
+                #mylogger.debug("Area: %d, perimeter: %d" % (cv2.contourArea(cnt),cv2.arcLength(cnt,True)))
+
                 # skip very small area contours
-                if cv2.contourArea(cnt)<35:
+                if cv2.contourArea(cnt)<30:
                     continue
                 # skip very small perimeter contours
-                if cv2.arcLength(cnt,True)<35:
+                if cv2.arcLength(cnt,True)<30:
                     continue
-                
+
                 # centroid
                 cx = M['m10']/M['m00']
                 cy = M['m01']/M['m00']
+                
+                #mylogger.debug("Center: %f,%f" % (cx/dw,cx/dw))
+                
                 # digit must be in the center
                 if cx/dw<0.3 or cx/dw>0.7:
                     continue
@@ -228,6 +266,7 @@ class Image(Base):
             if biggest_contour==None:
                 digit = self.dbDigit(i, digit_bin)
                 digit.markDigitForManualRecognize (use_for_training=False)
+                mylogger.warn("Digit %d: no biggest contour found" % i)
                 continue    
             
             # filter digit image using biggest contour    
@@ -376,6 +415,10 @@ class KNN (object):
         train_data = []
         responses = []
         for dbdigit in train_digits:    
+            h,w = dbdigit.body.shape
+            # skip digits with bad shape
+            if h*w != digit_base_h*digit_base_w:
+                continue
             # cast digit to 1 dimension array
             sample = dbdigit.body.reshape(digit_base_h*digit_base_w).astype(np.float32)
             train_data.append(sample)
@@ -409,11 +452,11 @@ class KNN (object):
             dbdigit.markDigitForManualRecognize()
             return False
         if neighbours[0,1]!=neighbours[0,0] or neighbours[0,2]!=neighbours[0,0]:
-            mylogger.debug("Digit %d. 3 first neighbours are not the same: %d, %d, %d" % (dbdigit.i, neighbours[0,0], neighbours[0,1], neighbours[0,2]))
+            mylogger.debug("Digit %d. Result %d. Three first neighbours are not the same: %d, %d, %d" % (dbdigit.i, result[0,0], neighbours[0,0], neighbours[0,1], neighbours[0,2]))
             dbdigit.markDigitForManualRecognize()
             return False
         if dist[0,0]>3000000 or dist[0,1]>3500000 or dist[0,2]>4000000:
-            mylogger.debug("Digit %d. 3 first neighbours are not so close: %d, %d, %d" % (dbdigit.i, dist[0,0], dist[0,1], dist[0,2]))
+            mylogger.debug("Digit %d. Result %d. Three first neighbours are not so close: %d, %d, %d" % (dbdigit.i, result[0,0], dist[0,0], dist[0,1], dist[0,2]))
             dbdigit.markDigitForManualRecognize()
             return False
     

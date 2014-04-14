@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
         img = createImageFromGDriveObject (img_info, http)
         file_name = img_info['title']
-        
+
         mylogger.info("Process %s" % file_name)
 
         # create image object     

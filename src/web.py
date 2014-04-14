@@ -34,7 +34,7 @@ def index():
             to_date = date.today()
         
         # fetch values 
-        images = sess.query(Image).filter(Image.check_time>=from_date, Image.check_time<=to_date+timedelta(days=1)).order_by(Image.check_time).all()
+        images = sess.query(Image).filter(Image.check_time>=from_date, Image.check_time<=to_date+timedelta(days=1), Image.result!='').order_by(Image.check_time).all()
         data = []
         prev_check = None
         first = images[0]
@@ -42,7 +42,7 @@ def index():
         # calculate full time interval
         full_interval = last.check_time-first.check_time
         # define min time step
-        min_step = full_interval/200 
+        min_step = full_interval/100 
         # calculate full average
         average_consumption = round((float(last.result)-float(first.result))/100/full_interval.total_seconds() * 60 * 60 * 24,2)
         

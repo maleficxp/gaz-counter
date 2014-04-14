@@ -13,7 +13,7 @@ from apiclient.discovery import build
 from oauth2client.client import OAuth2WebServerFlow
 from oauth2client.file import Storage
 
-from models import getLastRecognizedImage
+from models import getLastRecognizedImage, mylogger
 
 class TZ(tzinfo):
     def utcoffset(self, dt): return timedelta(hours=+4)
@@ -65,22 +65,25 @@ def getImagesFromGDrive():
     drive_service = build('drive', 'v2', http=http)
     
     # move old images to trash
+    mylogger.debug("Delete old files on google drive")
     month_ago = date.today() + relativedelta( months = -1 )
-    files = drive_service.files().list(q = "'%s' in parents and mimeType = 'image/jpeg' and modifiedDate<'%s'" % (FOLDER_ID, month_ago.isoformat()), 
+    files = drive_service.files().list(q = "'%s' in parents and mimeType = 'image/jpeg' and trashed = false and modifiedDate<'%s'" % (FOLDER_ID, month_ago.isoformat()), 
                                        maxResults=1000).execute()
     for image in files.get('items'): 
+        mylogger.debug("Delete %s" % image['title'])
         drive_service.files().trash(fileId=image['id']).execute()
+    mylogger.debug("Deleting complete")
     
     # define last recognized image time
-    last_image = getLastRecognizedImage()     
+    last_image = getLastRecognizedImage()    
      
     # Fetch photos from folder
     page_size = 1000
     result = []
     pt = None
     while True:
-        files = drive_service.files().list(q = "'%s' in parents and trashed = false and mimeType = 'image/jpeg' and modifiedDate>'%s'" % (FOLDER_ID, last_image.check_time.replace(tzinfo=TZ()).isoformat('T')), 
-                                           maxResults=page_size, pageToken=pt).execute()
+        q = "'%s' in parents and trashed = false and mimeType = 'image/jpeg' and modifiedDate>'%s'" % (FOLDER_ID, last_image.check_time.replace(tzinfo=TZ()).isoformat('T'))
+        files = drive_service.files().list(q = q, maxResults=page_size, pageToken=pt).execute()
         result.extend(files.get('items'))
         pt = files.get('nextPageToken')
         if not pt:
