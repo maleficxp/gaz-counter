@@ -219,12 +219,18 @@ class Image(Base):
             dh, dw, dk = digit.shape
             # binarize each digit
             digit_gray = cv2.cvtColor(digit,cv2.COLOR_BGR2GRAY)
-            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-3)
             
+            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,0)
+
             # remove some noise
             kernel = np.ones((2,2),np.uint8)
             digit_bin = cv2.morphologyEx(digit_bin, cv2.MORPH_OPEN, kernel)
             
+#             cv2.imshow("digit",digit_bin)
+#             k = cv2.waitKey(0)
+#             if k==1048603:
+#                 sys.exit()            
+
             # find contours
             other, contours, hierarhy = cv2.findContours(digit_bin.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
             
@@ -303,7 +309,7 @@ class Image(Base):
         # if no digits extracted yet, try to do it
         if len(self.digits)==0:
             # We cannot split digits if image not defined
-            if self.img == None:
+            if self.img == None:            
                 return False
             if not self.splitDigits():
                 return False
