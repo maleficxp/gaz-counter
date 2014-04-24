@@ -10,7 +10,7 @@
 import sys
 import os
 
-from models import getImage, sess, mylogger, getLastRecognizedImage
+from models import getImage, sess, mylogger
 from gdrive import getImagesFromGDrive, createImageFromGDriveObject
 
 if __name__ == '__main__':

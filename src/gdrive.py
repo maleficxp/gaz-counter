@@ -62,13 +62,14 @@ def getImagesFromGDrive():
     
     http = getAuthorizedHttp()
     
+    # create service object
     drive_service = build('drive', 'v2', http=http)
     
     # move old images to trash
     mylogger.debug("Delete old files on google drive")
     month_ago = date.today() + relativedelta( months = -1 )
-    files = drive_service.files().list(q = "'%s' in parents and mimeType = 'image/jpeg' and trashed = false and modifiedDate<'%s'" % (FOLDER_ID, month_ago.isoformat()), 
-                                       maxResults=1000).execute()
+    q = "'%s' in parents and mimeType = 'image/jpeg' and trashed = false and modifiedDate<'%s'" % (FOLDER_ID, month_ago.isoformat()) 
+    files = drive_service.files().list(q = q, maxResults=1000).execute()
     for image in files.get('items'): 
         mylogger.debug("Delete %s" % image['title'])
         drive_service.files().trash(fileId=image['id']).execute()
