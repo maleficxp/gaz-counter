@@ -89,7 +89,7 @@ class Image(Base):
         y_center = max_loc[1] + sample_h/2
         
         # some approx centering 
-        if x_center>w*0.6:
+        if x_center>w*0.7:
             img = img[0:h, 0.2*w:w]
             h, w, k = img.shape
             x_center = x_center-0.2*w
@@ -466,6 +466,6 @@ class KNN (object):
             dbdigit.markDigitForManualRecognize()
             return False
     
-        dbdigit.result = str(int(ret))
+        #dbdigit.result = str(int(ret))
         return True
     

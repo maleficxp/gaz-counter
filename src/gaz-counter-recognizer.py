@@ -12,6 +12,7 @@ import os
 
 from models import getImage, sess, mylogger
 from gdrive import getImagesFromGDrive, createImageFromGDriveObject
+#from fs_emu import getImagesFromGDrive, createImageFromGDriveObject
 
 if __name__ == '__main__':
 
