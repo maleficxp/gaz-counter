@@ -1,6 +1,4 @@
-/gdrive.pyc
-/models.pyc
-/web.pyc
+*.pyc
 /client_secrets.json
 /config.ini
 /gaz.log
