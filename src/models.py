@@ -466,6 +466,6 @@ class KNN (object):
             dbdigit.markDigitForManualRecognize()
             return False
     
-        #dbdigit.result = str(int(ret))
+        dbdigit.result = str(int(ret))
         return True
     
