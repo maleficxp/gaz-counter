@@ -199,7 +199,7 @@ class Image(Base):
 #             key = cv2.waitKey(0)
 #             if key==1048603:
 #                 sys.exit()
-            return False
+            return False    
         
         self.digits_img = img
         return True
@@ -220,7 +220,7 @@ class Image(Base):
             # binarize each digit
             digit_gray = cv2.cvtColor(digit,cv2.COLOR_BGR2GRAY)
             
-            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,0)
+            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-2)
 
             # remove some noise
             kernel = np.ones((2,2),np.uint8)

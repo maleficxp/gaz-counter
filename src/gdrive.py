@@ -94,11 +94,19 @@ def getImagesFromGDrive():
         
     return result, http
 
-def downloadImageFromGDrive (downloadUrl, http=None):
+def downloadImageFromGDrive (downloadUrl, http=None, file_id=None):
     if http==None:
         http = getAuthorizedHttp()
     # Download photo
     resp, content = http.request(downloadUrl)
+    if resp['status']=='403':
+        # Download link expired
+        print 'Download link expired, try to get new download url'
+        # create service object
+        drive_service = build('drive', 'v2', http=http)
+        image_info = drive_service.files().get(fileId=file_id).execute()
+        resp, content = http.request(image_info['downloadUrl'])
+    
     # Create cv image
     img_array = np.asarray(bytearray(content), dtype=np.uint8)
     return cv2.imdecode(img_array, cv2.IMREAD_COLOR)

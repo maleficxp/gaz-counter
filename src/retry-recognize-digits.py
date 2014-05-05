@@ -7,6 +7,8 @@
 @contact:    andrey.shutkin@gmail.com
 '''
 
+import re
+
 from gdrive import downloadImageFromGDrive
 
 from models import Image, sess, mylogger
@@ -18,7 +20,8 @@ if __name__ == '__main__':
     for image in unrecognized_images:
         mylogger.info("Process %s" % image.file_name)
         # try to recognize digits using new training data
-        image.img = downloadImageFromGDrive(image.download_url)
+        m = re.search('id=(.*)', image.img_link)
+        image.img = downloadImageFromGDrive(image.download_url, file_id=m.group(1))        
         image.identifyDigits()
     sess.commit()
     
