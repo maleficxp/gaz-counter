@@ -101,6 +101,15 @@ class Image(Base):
         # detect lines
         lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=100)
         
+        if None == lines:
+            mylogger.warn("No lines found")
+            return False 
+        
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()    
+        
         # detect nearest for center horisontal lines
         rho_below = rho_above = np.sqrt(h*h+w*w)
         line_above = None
