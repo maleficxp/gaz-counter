@@ -229,7 +229,7 @@ class Image(Base):
             # binarize each digit
             digit_gray = cv2.cvtColor(digit,cv2.COLOR_BGR2GRAY)
             
-            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-2)
+            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-3)
 
             # remove some noise
             kernel = np.ones((2,2),np.uint8)

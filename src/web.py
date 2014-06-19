@@ -42,7 +42,7 @@ def index():
         # calculate full time interval
         full_interval = last.check_time-first.check_time
         # define min time step
-        min_step = full_interval/100 
+        min_step = full_interval/200 
         # calculate full average
         average_consumption = round((float(last.result)-float(first.result))/100/full_interval.total_seconds() * 60 * 60 * 24,2)
         
