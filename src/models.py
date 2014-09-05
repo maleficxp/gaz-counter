@@ -120,7 +120,7 @@ class Image(Base):
             cos = np.cos(theta)
             
             # discard not horisontal
-            if (sin<0.7):
+            if (sin<0.75):
                 continue
     
             # calculate rho for line parallel to current line and passes through the "center" point             
@@ -151,6 +151,11 @@ class Image(Base):
 #                 x2 = int(x0 - 1000*(-sin))
 #                 y2 = int(y0 - 1000*(cos))    
 #                 cv2.line(img,(x1,y1),(x2,y2),(0,255,0),2)
+         
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()     
          
         # check result 
         if line_below==None or line_above==None:
@@ -187,9 +192,9 @@ class Image(Base):
         x_right = max_loc[0]-6
         
         # remove noise 
-        kernel = np.ones((7,7),np.uint8)
+        kernel = np.ones((4,4),np.uint8)
         thres = cv2.morphologyEx(thres, cv2.MORPH_CLOSE, kernel)
-        
+
         # search for left edge position
         x_left=0
         while x_left<w :
@@ -210,6 +215,11 @@ class Image(Base):
 #                 sys.exit()
             return False    
         
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()     
+        
         self.digits_img = img
         return True
     
@@ -229,7 +239,7 @@ class Image(Base):
             # binarize each digit
             digit_gray = cv2.cvtColor(digit,cv2.COLOR_BGR2GRAY)
             
-            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-3)
+            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-1)
 
             # remove some noise
             kernel = np.ones((2,2),np.uint8)

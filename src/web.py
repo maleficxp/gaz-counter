@@ -72,7 +72,7 @@ def index():
 
 @app.route('/recognize')
 def recognize():
-    unrecognized_images = sess.query(Image).filter_by(result='').all()    
+    unrecognized_images = sess.query(Image).filter_by(result='').limit(100).all()
     return render_template('recognize.html', images=unrecognized_images)
  
 @app.route('/save_digits', methods=['POST'])
