@@ -36,36 +36,43 @@ def index():
         # fetch values 
         images = sess.query(Image).filter(Image.check_time>=from_date, Image.check_time<=to_date+timedelta(days=1), Image.result!='').order_by(Image.check_time).all()
         data = []
-        prev_check = None
-        first = images[0]
-        last = images[-1]
-        # calculate full time interval
-        full_interval = last.check_time-first.check_time
-        # define min time step
-        min_step = full_interval/200 
-        # calculate full average
-        average_consumption = round((float(last.result)-float(first.result))/100/full_interval.total_seconds() * 60 * 60 * 24,2)
-        
-        for image in images:
-            check = {'time':image.check_time, 'value':float(image.result)/100}
-            if None != prev_check:
-                # caclulate time delta with previous check 
-                td = check['time']-prev_check['time']
-                # skip very often checks
-                if td<min_step: 
-                    continue
-                # caclulate tic average consumption
-                check['diff'] = round(float(check['value']-prev_check['value'])/td.total_seconds() * 60 * 60 * 24, 2)    
-                # set diff value of first check equal to diff value of second check
-                if prev_check['diff']==None:
-                    prev_check['diff'] = check['diff']
-            else:
-                # first check point
-                check['diff'] = None
-            # push chekpoint to series
-            data.append(check)
-            prev_check = check
+
+        if len(images)>0:
+            prev_check = None
+            first = images[0]
+            last = images[-1]        
             
+            # calculate full time interval
+            full_interval = last.check_time-first.check_time
+            # define min time step
+            min_step = full_interval/200 
+            # calculate full average
+            average_consumption = round((float(last.result)-float(first.result))/100/full_interval.total_seconds() * 60 * 60 * 24,2)
+    
+    
+            for image in images:
+                check = {'time':image.check_time, 'value':float(image.result)/100}
+                if None != prev_check:
+                    # caclulate time delta with previous check 
+                    td = check['time']-prev_check['time']
+                    # skip very often checks
+                    if td<min_step: 
+                        continue
+                    # caclulate tic average consumption
+                    check['diff'] = round(float(check['value']-prev_check['value'])/td.total_seconds() * 60 * 60 * 24, 2)    
+                    # set diff value of first check equal to diff value of second check
+                    if prev_check['diff']==None:
+                        prev_check['diff'] = check['diff']
+                else:
+                    # first check point
+                    check['diff'] = None
+                # push chekpoint to series
+                data.append(check)
+                prev_check = check
+        else:
+            average_consumption = 0;
+            
+                    
         unrecognized_images_cnt = sess.query(Image).filter_by(result='').count()
         
         return render_template('index.html', from_date=from_date, to_date=to_date, series=data, average_consumption=average_consumption, unrecognized_images_cnt=unrecognized_images_cnt)
