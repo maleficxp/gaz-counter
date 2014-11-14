@@ -83,6 +83,12 @@ class Image(Base):
         
         # match sample center template
         res = cv2.matchTemplate(img,sample,cv2.TM_CCORR_NORMED)
+        
+#         cv2.imshow('img',res)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()    
+        
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         # caclulate "center" point coordinates
         x_center = max_loc[0] + sample_w/2
@@ -93,6 +99,12 @@ class Image(Base):
             img = img[0:h, 0.2*w:w]
             h, w, k = img.shape
             x_center = x_center-0.2*w
+        
+#         cv2.circle(img, (x_center,y_center), 5, (0,0,255))
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()    
         
         # make grayscale image
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
@@ -239,11 +251,11 @@ class Image(Base):
             # binarize each digit
             digit_gray = cv2.cvtColor(digit,cv2.COLOR_BGR2GRAY)
             
-            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-1)
+            digit_bin = cv2.adaptiveThreshold(digit_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,9,-5)
 
             # remove some noise
-            kernel = np.ones((2,2),np.uint8)
-            digit_bin = cv2.morphologyEx(digit_bin, cv2.MORPH_OPEN, kernel)
+            # kernel = np.ones((2,2),np.uint8)
+            # digit_bin = cv2.morphologyEx(digit_bin, cv2.MORPH_OPEN, kernel)
             
 #             cv2.imshow("digit",digit_bin)
 #             k = cv2.waitKey(0)
@@ -435,8 +447,8 @@ class KNN (object):
     def train():    
         mylogger.info("Start training")
         knn = KNN.getKNN()
-        # fetch digits for train from base
-        train_digits = sess.query(Digit).filter(Digit.result!='?').filter_by(use_for_training=True).all()
+        # fetch digits for train from base, use only last 20000
+        train_digits = sess.query(Digit).filter(Digit.result!='?').filter_by(use_for_training=True).order_by("id DESC").limit(20000).all()
         train_data = []
         responses = []
         for dbdigit in train_digits:    
