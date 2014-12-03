@@ -110,8 +110,14 @@ class Image(Base):
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         # search for edges using Canny
         edges = cv2.Canny(gray, 100, 200)
+        
+#         cv2.imshow('img',edges)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()    
+        
         # detect lines
-        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=100)
+        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=110)
         
         if None == lines:
             mylogger.warn("No lines found")
@@ -163,7 +169,28 @@ class Image(Base):
 #                 x2 = int(x0 - 1000*(-sin))
 #                 y2 = int(y0 - 1000*(cos))    
 #                 cv2.line(img,(x1,y1),(x2,y2),(0,255,0),2)
-         
+
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()    
+# 
+#         x0 = line_above["cos"]*line_above["rho"]
+#         y0 = line_above["sin"]*line_above["rho"]
+#         x1 = int(x0 + 1000*(-line_above["sin"]))
+#         y1 = int(y0 + 1000*(line_above["cos"]))
+#         x2 = int(x0 - 1000*(-line_above["sin"]))
+#         y2 = int(y0 - 1000*(line_above["cos"]))    
+#         cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
+#         
+#         x0 = line_below["cos"]*line_below["rho"]
+#         y0 = line_below["sin"]*line_below["rho"]
+#         x1 = int(x0 + 1000*(-line_below["sin"]))
+#         y1 = int(y0 + 1000*(line_below["cos"]))
+#         x2 = int(x0 - 1000*(-line_below["sin"]))
+#         y2 = int(y0 - 1000*(line_below["cos"]))    
+#         cv2.line(img,(x1,y1),(x2,y2),(0,255,0),2)
+#                          
 #         cv2.imshow('img',img)
 #         key = cv2.waitKey(0)
 #         if key==1048603:
@@ -193,6 +220,11 @@ class Image(Base):
         # crop image
         img = img[line_above["rho"]:line_below["rho"], 0:w]
         h, w, k = img.shape
+        
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()    
         
         # binarize using adaptive threshold
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
