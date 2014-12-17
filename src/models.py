@@ -308,7 +308,7 @@ class Image(Base):
                 #mylogger.debug("Area: %d, perimeter: %d" % (cv2.contourArea(cnt),cv2.arcLength(cnt,True)))
 
                 # skip very small area contours
-                if cv2.contourArea(cnt)<30:
+                if cv2.contourArea(cnt)<25:
                     continue
                 # skip very small perimeter contours
                 if cv2.arcLength(cnt,True)<30:
