@@ -318,10 +318,10 @@ class Image(Base):
                 cx = M['m10']/M['m00']
                 cy = M['m01']/M['m00']
                 
-                #mylogger.debug("Center: %f,%f" % (cx/dw,cx/dw))
+                # mylogger.debug("Center: %f,%f" % (cx/dw,cy/dh))
                 
                 # digit must be in the center
-                if cx/dw<0.3 or cx/dw>0.7:
+                if cx/dw<0.25 or cx/dw>0.75 or cy/dh<0.25 or cy/dh>0.75:
                     continue
                 
                 # identify biggest contour
@@ -342,6 +342,11 @@ class Image(Base):
             mask = np.zeros(digit_bin.shape,np.uint8)
             cv2.drawContours(mask,[biggest_contour],0,255,-1)
             digit_bin = cv2.bitwise_and(digit_bin,digit_bin,mask = mask)
+            
+#             cv2.imshow("digit",digit_bin)
+#             k = cv2.waitKey(0)
+#             if k==1048603:
+#                 sys.exit()        
             
             # caclulate bounding rectangle
             rw = dw/2.0
