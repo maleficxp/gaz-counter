@@ -71,23 +71,27 @@ class Image(Base):
         sample_h, sample_w, sample_k = sample.shape
         sample_right = cv2.imread(os.path.dirname(__file__)+"/sample_right.jpg",cv2.IMREAD_GRAYSCALE)
         
-        img = self.img
+        img = self.img          
                 
         # rotate 90 
         h, w, k = img.shape
-        M = cv2.getRotationMatrix2D((w/2,h/2),270,1)
-        img = cv2.warpAffine(img,M,(w,h))
-        # crop black sides
-        img = img[0:h, (w-h)/2:h+(w-h)/2]
-        h, w, k = img.shape
+        if w>h:            
+            M = cv2.getRotationMatrix2D((w/2,h/2),270,1)
+            img = cv2.warpAffine(img,M,(w,h))
+            # crop black sides
+            img = img[0:h, (w-h)/2:h+(w-h)/2]
+            h, w, k = img.shape
+        
+        # resize
+        img = cv2.resize(img, dsize=(480, 640), interpolation = cv2.INTER_AREA)
+        
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603 or key==27:
+#             sys.exit()    
         
         # match sample center template
         res = cv2.matchTemplate(img,sample,cv2.TM_CCORR_NORMED)
-        
-#         cv2.imshow('img',res)
-#         key = cv2.waitKey(0)
-#         if key==1048603:
-#             sys.exit()    
         
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         # caclulate "center" point coordinates
@@ -103,7 +107,7 @@ class Image(Base):
 #         cv2.circle(img, (x_center,y_center), 5, (0,0,255))
 #         cv2.imshow('img',img)
 #         key = cv2.waitKey(0)
-#         if key==1048603:
+#         if key==1048603 or key==27:
 #             sys.exit()    
         
         # make grayscale image
@@ -113,7 +117,7 @@ class Image(Base):
         
 #         cv2.imshow('img',edges)
 #         key = cv2.waitKey(0)
-#         if key==1048603:
+#         if key==1048603 or key==27:
 #             sys.exit()    
         
         # detect lines
@@ -172,7 +176,7 @@ class Image(Base):
 
 #         cv2.imshow('img',img)
 #         key = cv2.waitKey(0)
-#         if key==1048603:
+#         if key==1048603 or key==27:
 #             sys.exit()    
 # 
 #         x0 = line_above["cos"]*line_above["rho"]
@@ -182,7 +186,7 @@ class Image(Base):
 #         x2 = int(x0 - 1000*(-line_above["sin"]))
 #         y2 = int(y0 - 1000*(line_above["cos"]))    
 #         cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
-#         
+#          
 #         x0 = line_below["cos"]*line_below["rho"]
 #         y0 = line_below["sin"]*line_below["rho"]
 #         x1 = int(x0 + 1000*(-line_below["sin"]))
@@ -190,7 +194,7 @@ class Image(Base):
 #         x2 = int(x0 - 1000*(-line_below["sin"]))
 #         y2 = int(y0 - 1000*(line_below["cos"]))    
 #         cv2.line(img,(x1,y1),(x2,y2),(0,255,0),2)
-#                          
+#                           
 #         cv2.imshow('img',img)
 #         key = cv2.waitKey(0)
 #         if key==1048603:
@@ -230,14 +234,24 @@ class Image(Base):
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         thres = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,31,2)
 
+#         cv2.imshow('img',thres)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()       
+
         # match sample_right template
         res = cv2.matchTemplate(thres,sample_right,cv2.TM_CCORR_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         x_right = max_loc[0]-6
         
         # remove noise 
-        kernel = np.ones((4,4),np.uint8)
+        kernel = np.ones((5,5),np.uint8)
         thres = cv2.morphologyEx(thres, cv2.MORPH_CLOSE, kernel)
+
+#         cv2.imshow('img',thres)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()        
 
         # search for left edge position
         x_left=0
@@ -249,6 +263,11 @@ class Image(Base):
         # crop image
         img = img[:, x_left:x_right]
         h, w, k = img.shape
+        
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603:
+#             sys.exit()        
         
         # check ratio
         if float(w)/float(h)<6.5 or float(w)/float(h)>9.5:
@@ -304,19 +323,10 @@ class Image(Base):
             biggest_contour_area = 0
             for cnt in contours:
                 M = cv2.moments(cnt)
-                
-                #mylogger.debug("Area: %d, perimeter: %d" % (cv2.contourArea(cnt),cv2.arcLength(cnt,True)))
-
-                # skip very small area contours
-                if cv2.contourArea(cnt)<25:
-                    continue
-                # skip very small perimeter contours
-                if cv2.arcLength(cnt,True)<30:
-                    continue
 
                 # centroid
-                cx = M['m10']/M['m00']
-                cy = M['m01']/M['m00']
+                cx = M['m10']/M['m00'] if M['m00'] else 0
+                cy = M['m01']/M['m00'] if M['m00'] else 0
                 
                 # mylogger.debug("Center: %f,%f" % (cx/dw,cy/dh))
                 
@@ -324,6 +334,15 @@ class Image(Base):
                 if cx/dw<0.25 or cx/dw>0.75 or cy/dh<0.25 or cy/dh>0.75:
                     continue
                 
+                # mylogger.debug("Area: %d, perimeter: %d" % (cv2.contourArea(cnt),cv2.arcLength(cnt,True)))
+
+                # skip very small area contours
+                if cv2.contourArea(cnt)<17:
+                    continue
+                # skip very small perimeter contours
+                if cv2.arcLength(cnt,True)<30:
+                    continue
+
                 # identify biggest contour
                 if cv2.contourArea(cnt)>biggest_contour_area:
                     biggest_contour = cnt
