@@ -11,6 +11,7 @@ import numpy as np
 import os
 import logging
 import sys
+from cgitb import grey
 
 dbengine = create_engine('sqlite:///' + os.path.dirname(__file__) + '/../db/images.db', echo=False)
 
@@ -64,11 +65,97 @@ class Image(Base):
             digit.body = digit_img
         return digit
     
+    def findFeature(self, queryImage, trainImage, trainMask=None):
+        
+        # Initiate SIFT detector
+        sift = cv2.SIFT()
+
+        # find the keypoints and descriptors with SIFT
+        kp_q, des_q = sift.detectAndCompute(queryImage,None)
+        kp_t, des_t = sift.detectAndCompute(trainImage, trainMask)
+        
+        if not kp_q or not kp_t:
+            mylogger.warn("No keypoints found")
+            return False
+
+#         img=cv2.drawKeypoints(queryImage, kp_q, outImage=np.zeros((1,1)), flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603 or key==27:
+#             sys.exit()    
+#             
+#         img=cv2.drawKeypoints(trainImage, kp_t, outImage=np.zeros((1,1)), flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603 or key==27:
+#             sys.exit()                
+
+        # create BFMatcher object
+        bf = cv2.BFMatcher()
+        
+        # Match descriptors.
+        matches = bf.knnMatch(des_q, des_t, k=2)
+        
+        # Apply ratio test
+        good = []
+        for best_matches in matches:
+            if len(best_matches)>1:
+                m,n = best_matches
+            else:
+                m=n=best_matches[0]
+            if m.distance < 0.75*n.distance:
+                good.append([m])
+                
+        if len(good)<2:
+            mylogger.warn("Feature not found")
+            return False 
+        
+#         img = cv2.drawMatchesKnn(queryImage, kp_q, trainImage, kp_t, good, outImg=np.zeros((1,1)), flags=2)
+#         cv2.imshow('img',img)
+#         key = cv2.waitKey(0)
+#         if key==1048603 or key==27:
+#             sys.exit()    
+        
+        img_pts = np.float32([ kp_t[m[0].trainIdx].pt for m in good ])
+        mean = cv2.reduce(img_pts, 0, cv2.REDUCE_AVG)[0]
+
+        # check dispersion
+        disp = 0
+        for pt in img_pts:
+            delta = 0
+            delta += (pt[0]-mean[0]) * (pt[0]-mean[0])           
+            delta += (pt[1]-mean[1]) * (pt[1]-mean[1])
+            if delta>1000:
+                # remove extremums
+                np.delete(img_pts, pt)
+            else:            
+                disp += delta
+        
+        if len(img_pts)<2:
+            mylogger.warn("G4 not found")
+            return False 
+        
+        # recalc mean
+        mean = cv2.reduce(img_pts, 0, cv2.REDUCE_AVG)[0]
+
+#        mylogger.info("Dispersion: %s" % disp)
+
+        if disp>5000:
+            mylogger.warn("Dispersion too big")
+            return False 
+        
+#         cv2.circle(trainImage, (int(mean[0]), int(mean[1])), 5, (0,0,255))
+#         cv2.imshow('img',trainImage)
+#         key = cv2.waitKey(0)
+#         if key==1048603 or key==27:
+#             sys.exit()    
+            
+        return (int(mean[0]), int(mean[1]))
+        
+    
     def extractDigitsFromImage (self):
 
         # init sample template
-        sample = cv2.imread(os.path.dirname(__file__)+"/sample.jpg")
-        sample_h, sample_w, sample_k = sample.shape
         sample_right = cv2.imread(os.path.dirname(__file__)+"/sample_right.jpg",cv2.IMREAD_GRAYSCALE)
         
         img = self.img          
@@ -84,34 +171,31 @@ class Image(Base):
         
         # resize
         img = cv2.resize(img, dsize=(480, 640), interpolation = cv2.INTER_AREA)
+        h, w, k = img.shape
         
-#         cv2.imshow('img',img)
-#         key = cv2.waitKey(0)
-#         if key==1048603 or key==27:
-#             sys.exit()    
+        sample_G4 = cv2.imread(os.path.dirname(__file__)+"/sample_G4.jpg")        
+        mask = np.zeros(img.shape[:2],np.uint8)
+        mask[0:int(h/2),0:w] = 255
+        mean = self.findFeature(sample_G4, img, mask)
+        if not mean:
+            return False
         
-        # match sample center template
-        res = cv2.matchTemplate(img,sample,cv2.TM_CCORR_NORMED)
-        
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         # caclulate "center" point coordinates
-        x_center = max_loc[0] + sample_w/2
-        y_center = max_loc[1] + sample_h/2
-        
-        # some approx centering 
-        if x_center>w*0.7:
-            img = img[0:h, 0.2*w:w]
-            h, w, k = img.shape
-            x_center = x_center-0.2*w
-        
-#         cv2.circle(img, (x_center,y_center), 5, (0,0,255))
-#         cv2.imshow('img',img)
-#         key = cv2.waitKey(0)
-#         if key==1048603 or key==27:
-#             sys.exit()    
+        x_center = int(mean[0])
+        y_center = int(mean[1]) + 25
         
         # make grayscale image
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+        # blur
+        kernel = np.ones((3,3),np.uint8)
+        gray = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
+
+#         cv2.imshow('img',gray)
+#         key = cv2.waitKey(0)
+#         if key==1048603 or key==27:
+#             sys.exit()    
+        
         # search for edges using Canny
         edges = cv2.Canny(gray, 100, 200)
         
@@ -121,7 +205,7 @@ class Image(Base):
 #             sys.exit()    
         
         # detect lines
-        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=110)
+        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=90)
         
         if None == lines:
             mylogger.warn("No lines found")
@@ -186,7 +270,7 @@ class Image(Base):
 #         x2 = int(x0 - 1000*(-line_above["sin"]))
 #         y2 = int(y0 - 1000*(line_above["cos"]))    
 #         cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
-#          
+#             
 #         x0 = line_below["cos"]*line_below["rho"]
 #         y0 = line_below["sin"]*line_below["rho"]
 #         x1 = int(x0 + 1000*(-line_below["sin"]))
@@ -194,7 +278,7 @@ class Image(Base):
 #         x2 = int(x0 - 1000*(-line_below["sin"]))
 #         y2 = int(y0 - 1000*(line_below["cos"]))    
 #         cv2.line(img,(x1,y1),(x2,y2),(0,255,0),2)
-#                           
+#                     
 #         cv2.imshow('img',img)
 #         key = cv2.waitKey(0)
 #         if key==1048603:
@@ -208,51 +292,59 @@ class Image(Base):
 #             if key==1048603:
 #                 sys.exit()            
             return False 
-        # check center must be approximetly in the middle between two lines 
-        if rho_below/rho_above>1.7 or rho_below/rho_above<0.6:
-            mylogger.warn("Wrong lines found: %f" % (rho_below/rho_above))
-#             cv2.imshow('img',img)
-#             key = cv2.waitKey(0)
-#             if key==1048603:
-#                 sys.exit()    
-            return False
          
         # make lines horizontal
-        M = cv2.getRotationMatrix2D((0,(line_below["rho"]-line_above["rho"])/2+line_above["rho"]),line_above["theta"]/np.pi*180-90,1)
+        M = cv2.getRotationMatrix2D((w/2,(line_below["rho"]-line_above["rho"])/2+line_above["rho"]),
+                                    (line_above["theta"]+line_below["theta"])/2/np.pi*180-90,1)
         img = cv2.warpAffine(img,M,(w,h))
 
         # crop image
-        img = img[line_above["rho"]:line_below["rho"], 0:w]
+        img = img[line_above["rho"]-int(w/2*line_above['cos']):line_below["rho"]-int(w/2*line_below['cos']), 0:w]
         h, w, k = img.shape
+        
+        sample_star = cv2.imread(os.path.dirname(__file__)+"/sample_star.jpg")        
+        mask = np.zeros(img.shape[:2],np.uint8)
+        mask[0:h,0:int(w/4)] = 255
+        mean = self.findFeature(sample_star, img, mask)
+        
+        # crop image
+        if mean:
+            img = img[0:h, mean[0]:w]
+            h, w, k = img.shape
         
 #         cv2.imshow('img',img)
 #         key = cv2.waitKey(0)
 #         if key==1048603:
 #             sys.exit()    
-        
+
         # binarize using adaptive threshold
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-        thres = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,31,2)
-
-#         cv2.imshow('img',thres)
-#         key = cv2.waitKey(0)
-#         if key==1048603:
-#             sys.exit()       
-
-        # match sample_right template
-        res = cv2.matchTemplate(thres,sample_right,cv2.TM_CCORR_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        x_right = max_loc[0]-6
         
-        # remove noise 
-        kernel = np.ones((5,5),np.uint8)
-        thres = cv2.morphologyEx(thres, cv2.MORPH_CLOSE, kernel)
+        thres = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY,11,2) 
 
+        # try find arrow using findFeature
+        sample_arr = cv2.imread(os.path.dirname(__file__)+"/sample_arr.jpg")        
+        mask = np.zeros(img.shape[:2],np.uint8)
+        mask[0:h,int(w/2):w] = 255
+        mean = self.findFeature(sample_arr, img, mask)
+
+        if mean:
+            x_right = mean[0]-12
+        else:
+            # match sample_right template
+            res = cv2.matchTemplate(thres,sample_right,cv2.TM_CCORR_NORMED)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+            x_right = max_loc[0]-4
+
+#         cv2.circle(thres, (x_right, 5), 5, (0,0,255))
 #         cv2.imshow('img',thres)
 #         key = cv2.waitKey(0)
 #         if key==1048603:
 #             sys.exit()        
-
+        
+        kernel = np.ones((5,5),np.uint8)
+        thres = cv2.morphologyEx(thres, cv2.MORPH_CLOSE, kernel)
+        
         # search for left edge position
         x_left=0
         while x_left<w :
@@ -270,7 +362,7 @@ class Image(Base):
 #             sys.exit()        
         
         # check ratio
-        if float(w)/float(h)<6.5 or float(w)/float(h)>9.5:
+        if float(w)/float(h)<6.5 or float(w)/float(h)>10:
             mylogger.warn("Image has bad ratio: %f" % (float(w)/float(h)))
 #             cv2.imshow('img',img)
 #             key = cv2.waitKey(0)
