@@ -65,7 +65,7 @@ class Image(Base):
             digit.body = digit_img
         return digit
     
-    def findFeature(self, queryImage, trainImage, trainMask=None):
+    def findFeature(self, queryImage, trainImage, trainMask=None, silent=False):
         
         # Initiate SIFT detector
         sift = cv2.SIFT()
@@ -75,7 +75,8 @@ class Image(Base):
         kp_t, des_t = sift.detectAndCompute(trainImage, trainMask)
         
         if not kp_q or not kp_t:
-            mylogger.warn("No keypoints found")
+            if not silent:
+                mylogger.warn("No keypoints found")
             return False
 
 #         img=cv2.drawKeypoints(queryImage, kp_q, outImage=np.zeros((1,1)), flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -107,7 +108,8 @@ class Image(Base):
                 good.append([m])
                 
         if len(good)<2:
-            mylogger.warn("Feature not found")
+            if not silent:
+                mylogger.warn("Feature not found")
             return False 
         
 #         img = cv2.drawMatchesKnn(queryImage, kp_q, trainImage, kp_t, good, outImg=np.zeros((1,1)), flags=2)
@@ -132,7 +134,8 @@ class Image(Base):
                 disp += delta
         
         if len(img_pts)<2:
-            mylogger.warn("G4 not found")
+            if not silent:
+                mylogger.warn("G4 not found")
             return False 
         
         # recalc mean
@@ -141,7 +144,8 @@ class Image(Base):
 #        mylogger.info("Dispersion: %s" % disp)
 
         if disp>5000:
-            mylogger.warn("Dispersion too big")
+            if not silent:
+                mylogger.warn("Dispersion too big")
             return False 
         
 #         cv2.circle(trainImage, (int(mean[0]), int(mean[1])), 5, (0,0,255))
@@ -205,7 +209,7 @@ class Image(Base):
 #             sys.exit()    
         
         # detect lines
-        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=90)
+        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=110)
         
         if None == lines:
             mylogger.warn("No lines found")
@@ -305,7 +309,7 @@ class Image(Base):
         sample_star = cv2.imread(os.path.dirname(__file__)+"/sample_star.jpg")        
         mask = np.zeros(img.shape[:2],np.uint8)
         mask[0:h,0:int(w/4)] = 255
-        mean = self.findFeature(sample_star, img, mask)
+        mean = self.findFeature(sample_star, img, mask, silent=True)
         
         # crop image
         if mean:
@@ -326,7 +330,7 @@ class Image(Base):
         sample_arr = cv2.imread(os.path.dirname(__file__)+"/sample_arr.jpg")        
         mask = np.zeros(img.shape[:2],np.uint8)
         mask[0:h,int(w/2):w] = 255
-        mean = self.findFeature(sample_arr, img, mask)
+        mean = self.findFeature(sample_arr, img, mask, silent=True)
 
         if mean:
             x_right = mean[0]-12
@@ -362,7 +366,7 @@ class Image(Base):
 #             sys.exit()        
         
         # check ratio
-        if float(w)/float(h)<6.5 or float(w)/float(h)>10:
+        if float(w)/float(h)<5.5 or float(w)/float(h)>10:
             mylogger.warn("Image has bad ratio: %f" % (float(w)/float(h)))
 #             cv2.imshow('img',img)
 #             key = cv2.waitKey(0)
