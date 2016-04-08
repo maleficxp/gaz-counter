@@ -9,6 +9,7 @@
 
 import sys
 import os
+import cv2
 
 from models import getImage, sess, mylogger
 from gdrive import getImagesFromGDrive, createImageFromGDriveObject
@@ -17,6 +18,8 @@ from gdrive import getImagesFromGDrive, createImageFromGDriveObject
 if __name__ == '__main__':
 
     images, http = getImagesFromGDrive()
+    
+    print("opencv version: %s" % cv2.__version__)
     
     # Process each photo
     for img_info in images:

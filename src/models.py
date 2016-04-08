@@ -68,7 +68,7 @@ class Image(Base):
     def findFeature(self, queryImage, trainImage, trainMask=None, silent=False):
         
         # Initiate SIFT detector
-        sift = cv2.SIFT()
+        sift = cv2.xfeatures2d.SIFT_create()
 
         # find the keypoints and descriptors with SIFT
         kp_q, des_q = sift.detectAndCompute(queryImage,None)
@@ -160,7 +160,7 @@ class Image(Base):
     def extractDigitsFromImage (self):
 
         # init sample template
-        sample_right = cv2.imread(os.path.dirname(__file__)+"/sample_right.jpg",cv2.IMREAD_GRAYSCALE)
+        sample_right = cv2.imread(os.path.dirname(__file__)+"/sample_right.jpg", cv2.IMREAD_GRAYSCALE)
         
         img = self.img          
                 
@@ -427,7 +427,7 @@ class Image(Base):
                 # mylogger.debug("Center: %f,%f" % (cx/dw,cy/dh))
                 
                 # digit must be in the center
-                if cx/dw<0.25 or cx/dw>0.75 or cy/dh<0.25 or cy/dh>0.75:
+                if cx/dw<0.15 or cx/dw>0.85 or cy/dh<0.25 or cy/dh>0.75:
                     continue
                 
                 # mylogger.debug("Area: %d, perimeter: %d" % (cv2.contourArea(cnt),cv2.arcLength(cnt,True)))
@@ -593,7 +593,7 @@ class KNN (object):
     @staticmethod
     def getKNN():
         if KNN._knn==None:
-            KNN._knn = cv2.KNearest()
+            KNN._knn = cv2.ml.KNearest_create()
         return KNN._knn
     @staticmethod
     def train():    
@@ -613,7 +613,7 @@ class KNN (object):
             train_data.append(sample)
             responses.append(int(dbdigit.result))
         # store training data
-        knn.train(np.array(train_data), np.array(responses))
+        knn.train(np.array(train_data), cv2.ml.ROW_SAMPLE, np.array(responses))
         KNN._trained = True
         mylogger.info("Training complete")
     @staticmethod
@@ -633,7 +633,7 @@ class KNN (object):
         test_data = np.array([sample])
         
         knn = KNN.getKNN()
-        ret,result,neighbours,dist = knn.find_nearest(test_data,k=5)
+        ret,result,neighbours,dist = knn.findNearest(test_data,k=5)
 
         # filter bad results
         if result[0,0]!=neighbours[0,0]:
